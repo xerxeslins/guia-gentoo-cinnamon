@@ -721,12 +721,11 @@ EOF</code></pre>
     </div>
 
     <h4>Mudar o Portage para usar Git</h4>
-    <p>O uso do Git para sincronizar o Portage é muito mais rápido que o rsync padrão. Para alterar, execute os comandos abaixo como root:</p>
+    <p>O uso do Git para sincronizar o Portage é muito mais rápido que o rsync padrão. Execute os comandos abaixo para alterar as configurações e fazer a primeira sincronização:</p>
     <div class="code-container">
         <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
-        <pre><code>sudo su -
-mkdir -p /etc/portage/repos.conf
-cat &lt;&lt; 'EOF' &gt; /etc/portage/repos.conf/gentoo.conf
+        <pre><code>sudo mkdir -p /etc/portage/repos.conf
+sudo tee /etc/portage/repos.conf/gentoo.conf > /dev/null << 'EOF'
 [DEFAULT]
 main-repo = gentoo
 
@@ -741,8 +740,8 @@ EOF</code></pre>
     <p>Agora apague a árvore antiga e sincronize a nova via Git:</p>
     <div class="code-container">
         <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
-        <pre><code>rm -rf /var/db/repos/gentoo
-emaint sync -a</code></pre>
+        <pre><code>sudo rm -rf /var/db/repos/gentoo
+sudo emaint sync -a</code></pre>
     </div>
 
     <script>
