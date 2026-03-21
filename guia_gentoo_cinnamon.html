@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia de Instalação Gentoo - Cinnamon</title>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #333;
+            --heading-color: #111;
+            --code-bg: #1e1e1e;
+            --code-text: #d4d4d4;
+            --code-border: #4caf50;
+            --header-bg: #2d2d2d;
+            --header-text: #e0e0e0;
+            --btn-bg: #444;
+            --btn-hover: #666;
+        }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px 40px;
+        }
+        h1, h2, h3, h4 {
+            color: var(--heading-color);
+            margin-top: 2em;
+        }
+        h1 { border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        p { margin-bottom: 1.2em; }
+        code {
+            font-family: "Consolas", "Monaco", monospace;
+            background-color: #e8e8e8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .code-container {
+            position: relative;
+            margin: 1.5em 0;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            border-left: 4px solid var(--code-border);
+        }
+        pre {
+            margin: 0;
+            padding: 15px;
+            overflow-x: auto;
+            font-size: 0.95em;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            border-left: 4px solid var(--code-border);
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            color: inherit;
+        }
+        .copy-btn {
+            background-color: var(--btn-bg);
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover { background-color: var(--btn-hover); }
+        .copy-btn.copied { background-color: #4caf50; }
+    </style>
+</head>
+<body>
+
+    <h1>Instalação de Gentoo com Cinnamon</h1>
+
+    <p>O artigo foi feito e testado usando o live-USB do Linux Mint 22.3.</p>
+    <p>O objetivo desta instalação é a praticidade, comodidade e não desempenho. Trata-se de uma instalação genérica com muitos pacotes binários.</p>
+    <p>Sem mais enrolação, vamos lá.</p>
+
+    <h3>Definição do Disco (SATA ou NVMe)</h3>
+    <p>Antes de iniciar a definição de variáveis, entre como root para evitar que as variáveis sejam apagadas da memória ao trocar de usuário no meio do processo:</p>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo -i</code></pre>
+    </div>
+
+    <p>Agora, precisamos dizer ao sistema qual disco será utilizado. Se o seu disco for um NVMe, usaremos o identificador <code>nvme0n1</code>. Se for um SSD ou HD SATA, usaremos <code>sda</code>.</p>
+    <p>Execute o comando abaixo que corresponde ao seu hardware. Isso criará uma variável na memória do terminal que será usada em todos os próximos passos:</p>
+
+    <p>Para NVMe:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>DISCO="/dev/nvme0n1"</code></pre>
+    </div>
+
+    <p>Para SATA:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>DISCO="/dev/sda"</code></pre>
+    </div>
+
+    <p>Para manter a automação e evitar que você tenha que lidar com a diferença de nomenclatura entre SATA (<code>sda1</code>) e NVMe (<code>nvme0n1p1</code>), utilizaremos uma técnica de manipulação de strings no Shell.</p>
+    <p>Abaixo está a lógica para capturar os nomes das partições automaticamente em variáveis, garantindo que o seu guia funcione universalmente.</p>
+
+    <h3>Definição das Partições</h3>
+    <p>Após o particionamento, execute o bloco de comandos abaixo. Ele identificará se o seu disco é NVMe ou SATA e ajustará os nomes das partições (<code>p1</code> ou <code>1</code>, etc.) automaticamente:</p>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code># Se o disco for NVMe, usa "p" (ex: nvme0n1p1). Se for SATA, o sufixo fica vazio (ex: sda1).
+if echo "$DISCO" | grep -q "nvme"; then P="p"; else P=""; fi
+
+# Cria variáveis para cada partição baseada no disco selecionado
+PART_EFI="${DISCO}${P}1"
+PART_BOOT="${DISCO}${P}2"
+PART_ROOT="${DISCO}${P}3"</code></pre>
+    </div>
+
+    <h3>Preparação dos discos</h3>
+    <p>Arquitetura FINAL</p>
+    <p>A ideia central é a seguinte: EFI e <code>/boot</code> ficam fora da criptografia. Todo o sistema fica dentro de um LUKS2.</p>
+    <ul>
+        <li>EFI &nbsp; &nbsp; &nbsp; &nbsp; -&gt; vfat &nbsp; -&gt; /boot/efi &nbsp; [FORA do LUKS]</li>
+        <li>/boot &nbsp; &nbsp; &nbsp; -&gt; ext4 &nbsp; -&gt; /boot &nbsp; &nbsp; &nbsp; [FORA do LUKS]</li>
+        <li>LUKS2 &nbsp; &nbsp; &nbsp; -&gt; Btrfs &nbsp;-&gt; /, /home, /.snapshots</li>
+    </ul>
+    <p>Atenção: em NVMe as partições são p1, p2, p3. Em SATA fica 1, 2 e 3.</p>
+
+    <h4>Limpar e particionar o disco (UEFI)</h4>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>wipefs -a $DISCO
+
+parted -s $DISCO mklabel gpt</code></pre>
+    </div>
+
+    <h4>EFI</h4>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>parted -s $DISCO mkpart EFI fat32 1MiB 1025MiB
+parted -s $DISCO set 1 esp on</code></pre>
+    </div>
+
+    <h4>/boot fora do LUKS</h4>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>parted -s $DISCO mkpart BOOT ext4 1025MiB 2049MiB</code></pre>
+    </div>
+
+    <h4>root criptografado</h4>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>parted -s $DISCO mkpart ROOT 2049MiB 100%
+
+lsblk $DISCO</code></pre>
+    </div>
+
+    <h3>Formatação + LUKS2 (Argon2id)</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkfs.vfat -F 32 $PART_EFI
+mkfs.ext4 $PART_BOOT
+
+cryptsetup luksFormat --type luks2 --pbkdf argon2id --pbkdf-memory 262144 --pbkdf-parallel 2 $PART_ROOT
+
+cryptsetup open $PART_ROOT cryptroot</code></pre>
+    </div>
+
+    <h3>Btrfs + subvolumes</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkfs.btrfs /dev/mapper/cryptroot
+mount /dev/mapper/cryptroot /mnt
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
+btrfs subvolume create /mnt/@snapshots
+umount /mnt</code></pre>
+    </div>
+
+    <h3>Montagem FINAL</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /mnt/gentoo
+mount -o subvol=@,compress=zstd /dev/mapper/cryptroot /mnt/gentoo
+mkdir -p /mnt/gentoo/{home,.snapshots,boot}
+mount -o subvol=@home,compress=zstd /dev/mapper/cryptroot /mnt/gentoo/home
+mount -o subvol=@snapshots,compress=zstd /dev/mapper/cryptroot /mnt/gentoo/.snapshots
+mount $PART_BOOT /mnt/gentoo/boot
+mkdir -p /mnt/gentoo/boot/efi
+mount $PART_EFI /mnt/gentoo/boot/efi</code></pre>
+    </div>
+
+    <h3>Persistência de Variáveis para o Chroot</h3>
+    <p>Para que os próximos passos encontrem as partições corretas dentro do ambiente isolado, injetamos as variáveis através de um script de inicialização do perfil:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /mnt/gentoo/etc/profile.d/
+cat &lt;&lt; EOF &gt; /mnt/gentoo/etc/profile.d/install_vars.sh
+export DISCO="${DISCO}"
+export PART_EFI="${PART_EFI}"
+export PART_BOOT="${PART_BOOT}"
+export PART_ROOT="${PART_ROOT}"
+EOF</code></pre>
+    </div>
+
+    <h3>Stage + chroot</h3>
+    <p>Aqui instalamos o Gentoo base.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>cd /mnt/gentoo</code></pre>
+    </div>
+    
+    <p>Abra o navegador e acesse: <a href="https://www.gentoo.org/downloads/">https://www.gentoo.org/downloads/</a></p>
+    <p>Copie o link do Stage "desktop profile | systemd". Baixe o Stage3 e execute:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>wget -c [URL_DO_STAGE]</code></pre>
+    </div>
+
+    <p>Em seguida, extraia o stage e prepare o ambiente chroot:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>tar xpvf stage3-*.tar.xz --xattrs-include='*.*' --numeric-owner
+cp --dereference /etc/resolv.conf /mnt/gentoo/etc/
+mount --types proc /proc /mnt/gentoo/proc
+mount --rbind /sys /mnt/gentoo/sys && mount --make-rslave /mnt/gentoo/sys
+mount --rbind /dev /mnt/gentoo/dev && mount --make-rslave /mnt/gentoo/dev
+mount --bind /run /mnt/gentoo/run && mount --make-slave /mnt/gentoo/run
+chroot /mnt/gentoo /bin/bash</code></pre>
+    </div>
+
+    <p>Por fim, recarregue o perfil. Isto ativará as variáveis de disco automaticamente:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>source /etc/profile</code></pre>
+    </div>
+
+    <h3>Make.conf</h3>
+    <p>Crie ou sobrescreva o make.conf utilizando o bloco abaixo. Remova o caractere <code>#</code> da opção <code>VIDEO_CARDS</code> que corresponde ao fabricante da sua placa de vídeo.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>cat &lt;&lt; 'EOF' &gt; /etc/portage/make.conf
+COMMON_FLAGS="-O2 -pipe -march=native"
+CFLAGS="${COMMON_FLAGS}"
+CXXFLAGS="${COMMON_FLAGS}"
+
+MAKEOPTS="-j16 -l16"
+
+# Baixar binários sempre que possível
+FEATURES="getbinpkg"
+EMERGE_DEFAULT_OPTS="--getbinpkg --binpkg-respect-use=y"
+
+# Vídeo: Descomente a linha referente à sua placa de vídeo
+# Para AMD (Radeon):
+#VIDEO_CARDS="amdgpu radeonsi"
+# Para Intel:
+#VIDEO_CARDS="intel i965 iris"
+# Para NVIDIA (Drivers proprietários):
+#VIDEO_CARDS="nvidia"
+
+# Opcional, mas recomendado pra desktop moderno
+ACCEPT_LICENSE="*"
+EOF</code></pre>
+    </div>
+    <p>Atenção: troque o valor do MAKEOPTS pelo valor que sair no comando <code>nproc</code> para adequar à quantidade de threads do seu processador.</p>
+
+    <h3>Sincronização</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge-webrsync
+getuto</code></pre>
+    </div>
+    
+    <p>Atualize o sistema base:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask --update --deep --newuse @world</code></pre>
+    </div>
+
+    <h3>Ferramentas, Discos e Boot</h3>
+    <p>Instale os utilitários do sistema, ferramentas de criptografia, sistema de arquivos Btrfs e o gerenciador de boot:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge -aq eix flaggie gentoolkit sys-fs/cryptsetup sys-fs/btrfs-progs sys-boot/grub sys-boot/efibootmgr</code></pre>
+    </div>
+
+    <h3>Rede (NetworkManager)</h3>
+    <p>Instale o gerenciador de rede de forma explícita para garantir a conectividade no primeiro boot do ambiente gráfico:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask net-misc/networkmanager</code></pre>
+    </div>
+
+    <h3>Firmware (Placa de vídeo, Wi-Fi e Processador)</h3>
+    <p>Este passo é vital antes de instalar o kernel. O pacote <code>linux-firmware</code> fornece os blobs proprietários necessários para que o hardware funcione corretamente.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask sys-kernel/linux-firmware</code></pre>
+    </div>
+
+    <h3>systemd com suporte a cryptsetup</h3>
+    <p>Este passo é essencial. Sem ele, o boot pode falhar com erros do tipo: <code>Failed to start systemd-cryptsetup@cryptroot.service</code></p>
+    <p>Garanta que o systemd seja compilado com a flag cryptsetup:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>echo "sys-apps/systemd cryptsetup" &gt; /etc/portage/package.use/systemd-cryptsetup
+
+emerge --ask --changed-use sys-apps/systemd</code></pre>
+    </div>
+
+    <h3>Criando a configuração do dracut</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /etc/dracut.conf.d
+
+cat &lt;&lt; 'EOF' &gt; /etc/dracut.conf.d/10-gentoo-luks-btrfs.conf
+# Gentoo + dracut + LUKS + Btrfs
+# Initramfs automático para gentoo-kernel-bin
+
+# Módulos necessários no initramfs
+add_dracutmodules+=" crypt btrfs "
+EOF</code></pre>
+    </div>
+
+    <h3>Obtendo o UUID do LUKS e Gerando o /etc/default/grub</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>UUID_LUKS="$(blkid -s UUID -o value $PART_ROOT)"</code></pre>
+    </div>
+    <p>Agora gere o conteúdo do /etc/default/grub:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>cat &lt;&lt; EOF &gt; /etc/default/grub
+GRUB_DISTRIBUTOR="Gentoo"
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
+GRUB_CMDLINE_LINUX="rd.luks.uuid=${UUID_LUKS} rd.luks.name=${UUID_LUKS}=cryptroot root=/dev/mapper/cryptroot rootfstype=btrfs rootflags=subvol=@"
+GRUB_DISABLE_LINUX_UUID=true
+GRUB_DISABLE_LINUX_PARTUUID=true
+EOF</code></pre>
+    </div>
+
+    <h3>Gerando o initramfs</h3>
+    <p>Antes de instalar o kernel, garanta que as partições de boot estão montadas corretamente para evitar que o kernel seja salvo no diretório raiz e o GRUB não o encontre:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mountpoint -q /boot || mount $PART_BOOT /boot
+mountpoint -q /boot/efi || mount $PART_EFI /boot/efi</code></pre>
+    </div>
+
+    <p>Certifique-se de que o installkernel utilizará o dracut:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>flaggie sys-kernel/installkernel +dracut</code></pre>
+    </div>
+    
+    <p>Deixe o processo automático acontecer ao atualizar o kernel. Como o <code>linux-firmware</code> já foi instalado, o dracut incluirá o microcódigo e os módulos de vídeo no initramfs automaticamente:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask sys-kernel/gentoo-kernel-bin virtual/dist-kernel</code></pre>
+    </div>
+
+    <p>Verifique se o kernel foi gerado corretamente. A lista abaixo deve conter os arquivos "vmlinuz-..." e "initramfs-...":</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>ls -lh /boot</code></pre>
+    </div>
+
+    <h3>GRUB</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Gentoo --recheck
+
+grub-mkconfig -o /boot/grub/grub.cfg</code></pre>
+    </div>
+
+    <h3>fstab</h3>
+    <p>É necessário capturar o UUID do Btrfs antes de gerar o arquivo fstab. Execute:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>BTRFS_UUID="$(blkid -s UUID -o value /dev/mapper/cryptroot)"</code></pre>
+    </div>
+    <p>O comando "cat" a seguir vai escrever o arquivo fstab automaticamente, com os identificadores corretos para o Btrfs (<code>0 0</code>).</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>cat &lt;&lt; EOF &gt; /etc/fstab
+$PART_EFI /boot/efi vfat defaults,noatime 0 2
+$PART_BOOT /boot ext4 defaults,noatime 0 2
+UUID=${BTRFS_UUID} / btrfs rw,subvol=@,compress=zstd,noatime 0 0
+UUID=${BTRFS_UUID} /home btrfs rw,subvol=@home,compress=zstd,noatime 0 0
+UUID=${BTRFS_UUID} /.snapshots btrfs rw,subvol=@snapshots,compress=zstd,noatime 0 0
+EOF</code></pre>
+    </div>
+
+    <h3>Timezone + Locale (Brasil)</h3>
+    <p>Aqui usei Recife, mas use a sua capital. Verifique as opções:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>ls /usr/share/zoneinfo/America/
+
+ln -sf /usr/share/zoneinfo/America/Recife /etc/localtime
+
+echo "pt_BR.UTF-8 UTF-8" &gt;&gt; /etc/locale.gen
+locale-gen
+eselect locale set pt_BR.utf8
+env-update && source /etc/profile
+echo "LANG=pt_BR.UTF-8" &gt; /etc/locale.conf</code></pre>
+    </div>
+
+    <h3>Teclado ABNT2</h3>
+    <p>No ambiente chroot, os daemons do systemd não estão em execução. Utilize os arquivos de configuração para definir o layout do teclado de forma definitiva.</p>
+    <p>Para o console virtual:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>echo "KEYMAP=br-abnt2" &gt; /etc/vconsole.conf</code></pre>
+    </div>
+    
+    <p>Para o ambiente gráfico (X11):</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /etc/X11/xorg.conf.d
+cat &lt;&lt; 'EOF' &gt; /etc/X11/xorg.conf.d/00-keyboard.conf
+Section "InputClass"
+        Identifier "system-keyboard"
+        MatchIsKeyboard "on"
+        Option "XkbLayout" "br"
+        Option "XkbModel" "abnt2"
+EndSection
+EOF</code></pre>
+    </div>
+
+    <h3>Input (USB, teclado, mouse)</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask sys-apps/kbd sys-apps/hwdata sys-apps/usbutils x11-base/xorg-server x11-drivers/xf86-input-libinput sys-auth/polkit</code></pre>
+    </div>
+
+    <h3>Usuário, sudo e senhas</h3>
+    <p>Usei usuário "xerxes", mude para o seu usuário.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge app-admin/sudo
+
+echo "%wheel ALL=(ALL:ALL) ALL" &gt;&gt; /etc/sudoers
+
+useradd -m -G wheel,audio,video -s /bin/bash xerxes
+
+passwd xerxes
+
+passwd</code></pre>
+    </div>
+
+    <h3>Cinnamon</h3>
+    <p>Instale o Cinnamon:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>flaggie dev-libs/libxmlb +introspection
+flaggie x11-libs/xapp +introspection
+flaggie dev-libs/libdbusmenu +gtk3
+
+emerge --ask gnome-extra/cinnamon x11-misc/lightdm x11-misc/lightdm-gtk-greeter x11-misc/xdg-user-dirs</code></pre>
+    </div>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>su - [seu_usuario]</code></pre>
+    </div>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>cat &lt;&lt; EOF &gt;&gt; ~/.xinitrc
+# Atualiza as pastas do usuário no início da sessão
+xdg-user-dirs-update
+EOF</code></pre>
+    </div>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>exit</code></pre>
+    </div>
+
+    <p>Configure o LightDM:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /etc/lightdm/lightdm.conf.d/
+cat &lt;&lt; "EOF" &gt; /etc/lightdm/lightdm.conf.d/50-greeter.conf
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+EOF</code></pre>
+    </div>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>systemctl enable lightdm.service NetworkManager.service</code></pre>
+    </div>
+
+    <h3>Permissões de Energia (Polkit + systemd)</h3>
+    <p>Para que os usuários do grupo wheel possam desligar ou reiniciar a máquina diretamente pela interface do Cinnamon utilizando o logind do systemd, crie a regra abaixo:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /etc/polkit-1/rules.d/
+cat &lt;&lt; "EOF" &gt; /etc/polkit-1/rules.d/55-systemd-power.rules
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.login1.power-off" ||
+         action.id == "org.freedesktop.login1.power-off-multiple-sessions" ||
+         action.id == "org.freedesktop.login1.reboot" ||
+         action.id == "org.freedesktop.login1.reboot-multiple-sessions" ||
+         action.id == "org.freedesktop.login1.suspend" ||
+         action.id == "org.freedesktop.login1.hibernate") &&
+        subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+EOF</code></pre>
+    </div>
+
+    <p>Apps extras:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask app-arch/file-roller gnome-extra/nemo-fileroller app-arch/p7zip app-arch/unrar app-arch/zip app-arch/unzip app-arch/cabextract app-arch/zstd app-arch/lz4 app-arch/lzip app-arch/lrzip media-gfx/flameshot x11-terms/sakura media-video/vlc sci-calculators/galculator</code></pre>
+    </div>
+
+    <h3>Áudio (PipeWire)</h3>
+    <p>Utilizaremos PipeWire + WirePlumber e não PulseAudio puro.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask media-video/pipewire media-video/wireplumber media-libs/alsa-lib media-plugins/alsa-plugins media-sound/alsa-utils
+
+# Habilita o áudio globalmente para todos os usuários
+systemctl --global enable pipewire pipewire-pulse wireplumber</code></pre>
+    </div>
+
+    <h3>Bluetooth</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask net-wireless/blueman
+
+systemctl enable bluetooth</code></pre>
+    </div>
+    <p>Lembrete: após logar, se tiver dificuldade para parear seu fone bluetooth, lembre-se de segurar o botão do bluetooth por um tempo para que ele fique disponível para nova conexão.</p>
+
+    <h3>Flatpak + Flathub</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask sys-apps/flatpak
+
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo</code></pre>
+    </div>
+    <p>Reinicie a sessão (logout/login).</p>
+
+    <h3>Codecs</h3>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask media-video/ffmpeg media-libs/gst-plugins-base media-libs/gst-plugins-good media-libs/gst-plugins-bad media-libs/gst-plugins-ugly</code></pre>
+    </div>
+
+    <h3>Overlay GURU</h3>
+    <p>Adicionar o overlay GURU ao Gentoo é um processo simples, recomendado para acessar ebuilds mantidos pela comunidade.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask dev-vcs/git app-eselect/eselect-repository
+
+eselect repository enable guru
+
+emaint sync -r guru</code></pre>
+    </div>
+
+    <p>Se pretende usar o doomretro, habilite o xerxes-overlay:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>eselect repository enable xerxes-overlay
+emaint sync -r xerxes-overlay
+emerge -qa games-fps/doomretro</code></pre>
+    </div>
+    <p>ou autorizando via flaggie:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>flaggie =games-fps/doomretro-9999 +**
+emerge -qa =games-fps/doomretro-9999</code></pre>
+    </div>
+
+    <h3>Zram</h3>
+    <p>Zram cria um dispositivo de swap comprimido na RAM, que é muito mais rápido que o swap em arquivo.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>emerge --ask sys-apps/zram-generator</code></pre>
+    </div>
+    <p>Crie o arquivo /etc/systemd/zram-generator.conf. O arquivo usa o algoritmo zstd (melhor compressão) e define o tamanho como 2x a RAM física para tentar atingir o requisito total de memória.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>cat &lt;&lt; EOF &gt; /etc/systemd/zram-generator.conf
+[zram0]
+zram-size = ram * 2
+compression-algorithm = zstd
+swap-priority = 100
+fs-type = swap
+EOF</code></pre>
+    </div>
+
+    <h3>Timeshift</h3>
+    <p>Se você optar por usar Btrfs + Timeshift e tem swapfile, os snapshots vão falhar. Solução: remova o swapfile e use apenas zram.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>swapoff /swapfile
+rm -f /swapfile</code></pre>
+    </div>
+    <p>Edite o <code>/etc/fstab</code> e remova ou comente a linha correspondente ao swapfile antigo. Ative o zram como mostrado antes.</p>
+    
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>eselect repository enable guru
+emaint sync -r guru
+emerge -qa app-backup/timeshift</code></pre>
+    </div>
+
+    <p>Opcionalmente altere o swappiness. Isso favorece zram antes de matar processos:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>mkdir -p /etc/sysctl.d
+echo "vm.swappiness=180" &gt; /etc/sysctl.d/99-zram.conf
+sysctl -p /etc/sysctl.d/99-zram.conf</code></pre>
+    </div>
+
+    <h3>Reiniciando</h3>
+    <p>Saia do chroot e reinicie o sistema:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>exit
+reboot</code></pre>
+    </div>
+
+    <h3>Pós-instalação</h3>
+    <p>Após reiniciar e logar no seu novo sistema, abra o terminal e instale o navegador Firefox (versão binária pré-compilada):</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo emerge --ask www-client/firefox-bin</code></pre>
+    </div>
+    
+    <p>Instale também Steam, Brave e Google Chrome via Flatpak:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>flatpak install flathub com.valvesoftware.Steam com.brave.Browser com.google.Chrome</code></pre>
+    </div>
+
+    <h4>Otimizando o Wi-Fi com iwd</h4>
+    <p>O <code>iwd</code> (iNet Wireless Daemon) substitui o <code>wpa_supplicant</code> e melhora a detecção de redes Wi-Fi (como em adaptadores USB) integrando-se de forma mais eficiente ao NetworkManager no Gentoo com systemd.</p>
+
+    <p>Habilite a USE flag e recompile o NetworkManager:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>echo "net-misc/networkmanager iwd -wext" | sudo tee /etc/portage/package.use/networkmanager
+sudo emerge --ask --changed-use net-misc/networkmanager</code></pre>
+    </div>
+
+    <p>Instale e ative o iwd:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo emerge --ask net-wireless/iwd
+sudo systemctl enable --now iwd</code></pre>
+    </div>
+
+    <p>Configure o backend do NetworkManager para usar o iwd:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo mkdir -p /etc/NetworkManager/conf.d/
+sudo tee /etc/NetworkManager/conf.d/wifi_backend.conf > /dev/null << 'EOF'
+[device]
+wifi.backend=iwd
+EOF</code></pre>
+    </div>
+
+    <p>Reinicie o NetworkManager e desative o wpa_supplicant:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo systemctl restart NetworkManager
+sudo systemctl disable --now wpa_supplicant</code></pre>
+    </div>
+
+    <h4>Autologin no LightDM</h4>
+    <p>Para iniciar a sessão automaticamente sem precisar digitar a senha, crie o grupo <code>autologin</code> e adicione o seu usuário (substitua <code>xerxes</code> pelo seu usuário):</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo groupadd autologin
+sudo gpasswd -a xerxes autologin</code></pre>
+    </div>
+
+    <p>Verifique o nome exato da sessão disponível (o nome do arquivo sem a extensão <code>.desktop</code>):</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>ls /usr/share/xsessions/</code></pre>
+    </div>
+
+    <p>Crie um arquivo de configuração dedicado para o autologin. Isso evita a necessidade de editar o arquivo principal com editores de texto. Substitua <code>xerxes</code> e <code>cinnamon</code> conforme a sua configuração:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo tee /etc/lightdm/lightdm.conf.d/60-autologin.conf > /dev/null << 'EOF'
+[Seat:*]
+autologin-user=xerxes
+autologin-session=cinnamon
+autologin-user-timeout=0
+EOF</code></pre>
+    </div>
+
+    <h4>Mudar o Portage para usar Git</h4>
+    <p>O uso do Git para sincronizar o Portage é muito mais rápido que o rsync padrão. Para alterar, execute os comandos abaixo como root:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo su -
+mkdir -p /etc/portage/repos.conf
+cat &lt;&lt; 'EOF' &gt; /etc/portage/repos.conf/gentoo.conf
+[DEFAULT]
+main-repo = gentoo
+
+[gentoo]
+location = /var/db/repos/gentoo
+sync-type = git
+sync-uri = https://anongit.gentoo.org/git/repo/sync/gentoo.git
+auto-sync = yes
+EOF</code></pre>
+    </div>
+    
+    <p>Agora apague a árvore antiga e sincronize a nova via Git:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>rm -rf /var/db/repos/gentoo
+emaint sync -a</code></pre>
+    </div>
+
+    <script>
+        document.querySelectorAll('.copy-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const pre = button.parentElement.nextElementSibling;
+                const code = pre.innerText;
+                navigator.clipboard.writeText(code).then(() => {
+                    const originalText = button.innerText;
+                    button.innerText = 'Copiado!';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.innerText = originalText;
+                        button.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
