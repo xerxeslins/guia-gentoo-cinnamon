@@ -390,6 +390,8 @@ mountpoint -q /boot/efi || mount $PART_EFI /boot/efi</code></pre>
         <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
         <pre><code>grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Gentoo --recheck
 
+sh -c 'echo "GRUB_THEME="/boot/grub/themes/gentoo_glass/theme.txt"" >> /etc/default/grub'
+
 grub-mkconfig -o /boot/grub/grub.cfg</code></pre>
     </div>
 
