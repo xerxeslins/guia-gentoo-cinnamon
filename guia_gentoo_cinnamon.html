@@ -379,6 +379,14 @@ mountpoint -q /boot/efi || mount $PART_EFI /boot/efi</code></pre>
         <pre><code>emerge --ask sys-kernel/gentoo-kernel-bin virtual/dist-kernel</code></pre>
     </div>
 
+    <p>Após a instalação, extraia a versão do kernel compilado em <code>/usr/src</code> e copie o arquivo binário correspondente para a pasta <code>/boot</code>:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>KERNEL_DIR=$(ls -d /usr/src/linux-*-gentoo-dist | head -n 1)
+KERNEL_VER=$(basename "$KERNEL_DIR" | sed 's/linux-//')
+cp "$KERNEL_DIR/arch/x86/boot/bzImage" "/boot/vmlinuz-${KERNEL_VER}"</code></pre>
+    </div>
+
     <p>Verifique se o kernel foi gerado corretamente. A lista abaixo deve conter os arquivos "vmlinuz-..." e "initramfs-...":</p>
     <div class="code-container">
         <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
@@ -538,7 +546,7 @@ EOF</code></pre>
     <p>Apps extras:</p>
     <div class="code-container">
         <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
-        <pre><code>emerge --ask app-arch/file-roller gnome-extra/nemo-fileroller app-arch/p7zip app-arch/unrar app-arch/zip app-arch/unzip app-arch/cabextract app-arch/zstd app-arch/lz4 app-arch/lzip app-arch/lrzip media-gfx/flameshot x11-terms/sakura media-video/vlc sci-calculators/galculator</code></pre>
+        <pre><code>emerge --ask app-arch/file-roller gnome-extra/nemo-fileroller app-arch/p7zip app-arch/unrar app-arch/zip app-arch/unzip app-arch/cabextract app-arch/zstd app-arch/lz4 app-arch/lzip app-arch/lrzip media-gfx/flameshot x11-terms/sakura gnome-extra/gnome-calculator dev-util/geany</code></pre>
     </div>
 
     <h3>Áudio (PipeWire)</h3>
@@ -661,6 +669,66 @@ reboot</code></pre>
     <div class="code-container">
         <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
         <pre><code>flatpak install flathub com.valvesoftware.Steam com.brave.Browser com.google.Chrome</code></pre>
+    </div>
+
+    <h4>Configuração da Fonte Hack e Terminal Sakura</h4>
+    <p>Instale a fonte Hack e configure o sistema para lidar com emojis em fontes monoespaçadas. Crie as regras via `cat` apontando para o arquivo de configuração e atualize o cache de fontes. Por fim, configure o terminal Sakura para utilizar a fonte instalada.</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>sudo emerge --ask media-fonts/hack
+
+mkdir -p ~/.config/fontconfig/conf.d/
+
+cat &lt;&lt; 'EOF' &gt; ~/.config/fontconfig/conf.d/99-emoji.conf
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE fontconfig SYSTEM "fonts.dtd"&gt;
+&lt;fontconfig&gt;
+  &lt;match target="pattern"&gt;
+    &lt;test name="family"&gt;&lt;string&gt;monospace&lt;/string&gt;&lt;/test&gt;
+    &lt;edit name="family" mode="append"&gt;&lt;string&gt;Noto Color Emoji&lt;/string&gt;&lt;/edit&gt;
+  &lt;/match&gt;
+&lt;/fontconfig&gt;
+EOF
+
+fc-cache -f -v
+
+mkdir -p ~/.config/sakura
+touch ~/.config/sakura/sakura.conf
+if grep -q "^font=" ~/.config/sakura/sakura.conf; then
+    sed -i 's/^font=.*/font=Hack 11/' ~/.config/sakura/sakura.conf
+else
+    echo "font=Hack 11" &gt;&gt; ~/.config/sakura/sakura.conf
+fi</code></pre>
+    </div>
+
+    <h4>Tema Colloid (GTK/Cinnamon e Ícones)</h4>
+    <p>O tema Colloid altera o aspecto visual da interface e dos ícones. Os comandos abaixo clonam os repositórios, executam os scripts de instalação e removem os arquivos temporários. Em seguida, o tema escuro é aplicado através da ferramenta gsettings.</p>
+
+    <p>Tema da Interface (GTK/Cinnamon):</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>git clone https://github.com/vinceliuice/Colloid-gtk-theme.git ~/Downloads/Colloid-temp
+cd ~/Downloads/Colloid-temp
+./install.sh -t all
+cd - && rm -rf ~/Downloads/Colloid-temp</code></pre>
+    </div>
+
+    <p>Tema de Ícones:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>git clone https://github.com/vinceliuice/Colloid-icon-theme.git ~/Downloads/Colloid-icon-temp
+cd ~/Downloads/Colloid-icon-temp
+./install.sh -s all -t all
+cd - && rm -rf ~/Downloads/Colloid-icon-temp</code></pre>
+    </div>
+
+    <p>Aplicação do Tema Escuro via Terminal:</p>
+    <div class="code-container">
+        <div class="code-header"><span>Terminal</span><button class="copy-btn">Copiar</button></div>
+        <pre><code>gsettings set org.cinnamon.desktop.interface gtk-theme "Colloid-Dark"
+gsettings set org.cinnamon.desktop.wm.preferences theme "Colloid-Dark"
+gsettings set org.cinnamon.theme name "Colloid-Dark"
+gsettings set org.cinnamon.desktop.interface icon-theme "Colloid"</code></pre>
     </div>
 
     <h4>Otimizando o Wi-Fi com iwd</h4>
